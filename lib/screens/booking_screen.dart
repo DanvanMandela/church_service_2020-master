@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:developer';
 import 'package:churchapp/http/connectivity.dart';
 import 'package:churchapp/http/contant/constant.dart';
+import 'package:churchapp/models/seat_model.dart';
+import 'package:connectivity/connectivity.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:churchapp/http/http_response/http_response.dart';
 import 'package:churchapp/models/Response.dart';
@@ -65,10 +67,8 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
   final Color logoGreen = Color(0xff25bcbb);
   final Color secondaryColor = Color(0xff232c51);
 
-
   List<dynamic> selectedValues = [];
   var concatenate = StringBuffer();
-
 
   //Service method
   Service _serviceValue;
@@ -95,23 +95,54 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
 
   //Declare response
   HttpResponse _response;
-  bool isButtonEnabled=true;
+  bool isButtonEnabled = true;
 
   //initialize response
   BookASeatState() {
     _response = new HttpResponse(this);
   }
 
+  Future<SeatModel> seatList;
+  List<Seat> jobs;
+  List<Map<String, String>> _dataSource;
+  List<Map<String, String>> myData;
+  bool isDataReady=false;
+
+  Future<SeatModel> getSeats(String service) async {
+    // Starting Web API Call.
+    String _service=service;
+
+    var data = {"service": "$_service"};
+
+    var response = await http.post(Constant.allSeat,body: data);
+    final jsonResponse = jsonDecode(response.body);
+
+    Map myMap = json.decode(response.body);
+    Iterable i = myMap['seats'];
+    jobs = i.map((model) => Seat.fromJson(model)).toList();
+
+    setState(() {
+      _dataSource = jobs
+          .map((seat) => {"name": seat.seatName, "status": seat.seatStatus,"number":"${seat.seatNumber}"})
+          .toList();
+           isDataReady=true;
+    });
+
+    print(_dataSource);
+
+    return SeatModel.fromJson(jsonResponse);
+  }
+
   //on book button clicked calls this
   void _submit() {
+
     var seats = int.parse(_seat.text);
     final form = _formKey.currentState;
     if (_validate == false) {
       setState(() {
         form.save();
-        String json=jsonEncode(selectedValues);
-      _response.doBook(service, seats, church,json);
-
+        String json = jsonEncode(selectedValues);
+        _response.doBook(service, seats, church, json);
       });
     }
   }
@@ -128,18 +159,6 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
     });
   }
 
-  bool isConn=true;
-
-  checkConn() {
-    check().then((internet) {
-      if (internet != null && internet) {
-        // Internet Present Case
-        isConn = true;
-      }
-      // No-Internet Case
-      isConn = false;
-    });
-  }
 
 
   //
@@ -151,7 +170,6 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
   void initState() {
     _dropdownMenuItems = buildDropdownMenuItems(_companies);
     _selectedCompany = _dropdownMenuItems[0].value;
-    checkConn();
     super.initState();
   }
 
@@ -178,35 +196,6 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
   DateTime _date = new DateTime.now();
   TimeOfDay _time = new TimeOfDay.now();
 
-  //Date setup
-  // Future<Null> _selectDate(BuildContext context) async {
-  //   final DateTime picked = await showDatePicker(
-  //       context: context,
-  //       initialDate: _date,
-  //       firstDate: new DateTime(2019),
-  //       lastDate: new DateTime(2030));
-
-  //   if (picked != null && picked != _date) {
-  //     print('Date selected: ${_date.toString()}');
-  //     setState(() {
-  //       _date = picked;
-  //     });
-  //   }
-  // }
-
-  // //Time setup
-  // Future<Null> _selectTime(BuildContext context) async {
-  //   final TimeOfDay picked =
-  //       await showTimePicker(context: context, initialTime: _time);
-
-  //   if (picked != null && picked != _time) {
-  //     print('Time selected: ${_time.toString()}');
-  //     setState(() {
-  //       _time = picked;
-  //     });
-  //   }
-  // }
-
   //show toast message
   void showToast(String message) {
     Fluttertoast.showToast(
@@ -224,10 +213,6 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
       context,
       type: ProgressDialogType.Normal,
       isDismissible: false,
-//      customBody: LinearProgressIndicator(
-//        valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
-//        backgroundColor: Colors.white,
-//      ),
     );
 
     pr.style(
@@ -237,6 +222,7 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
       elevation: 10.0,
       insetAnimCurve: Curves.easeInOut,
     );
+
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
@@ -292,21 +278,28 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
                                 padding:
                                 const EdgeInsets.fromLTRB(0, 0, 0, 0),
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.start,
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Padding(
                                       padding: const EdgeInsets.all(8.0),
                                       child: Center(
                                         child: Text(
-                                            "Deliverance Church Utawala\nSeating Structure", textAlign: TextAlign.center,
+                                          "Deliverance Church Utawala\nSeating Structure",
+                                          textAlign: TextAlign.center,
                                           style: GoogleFonts.openSans(
-                                              color: Colors.black87, fontSize: 21, fontWeight: FontWeight.w600),
+                                              color: Colors.black87,
+                                              fontSize: 21,
+                                              fontWeight: FontWeight.w600),
                                         ),
                                       ),
                                     ),
-                                    SizedBox(height: 10,),
-                                    Image.asset("assets/images/seats-structure.png")
+                                    SizedBox(
+                                      height: 10,
+                                    ),
+                                    Image.asset(
+                                        "assets/images/seats-structure.png")
                                   ],
                                 ),
                               ),
@@ -327,19 +320,38 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
                             children: <Widget>[
                               Padding(
                                 padding:
-                                    const EdgeInsets.fromLTRB(10, 10, 10, 5),
+                                const EdgeInsets.fromLTRB(10, 10, 10, 5),
                                 child: Text(
                                   "Select Service",
                                   style: TextStyle(
-                                      color: Color(0xff616161), fontSize: 16.0),
+                                      color: Color(0xff616161),
+                                      fontSize: 16.0),
                                 ),
                               ),
                               RadioListTile(
                                 title: const Text('1st Service'),
                                 value: Service.FIRST,
                                 groupValue: _serviceValue,
-                                onChanged: (Service value) {
-                                  setState(() {
+                                onChanged: (Service value) async {
+
+
+                                  var connectivityResult = await (Connectivity().checkConnectivity());
+                                  if (connectivityResult == ConnectivityResult.mobile) {
+                                    // I am connected to a mobile network.
+                                    pr.show();
+                                    await getSeats(value._service);
+                                    pr.hide();
+                                  } else if (connectivityResult == ConnectivityResult.wifi) {
+                                    // I am connected to a wifi network.
+                                    pr.show();
+                                    await getSeats(value._service);
+                                    pr.hide();
+                                  }else if (connectivityResult == ConnectivityResult.none) {
+                                    // I am connected to a wifi network.
+                                    showToast("No Connection");
+                                  }
+
+                                  setState(()  {
                                     _serviceValue = value;
                                     Service data = value;
                                     service = data._service;
@@ -350,8 +362,23 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
                                 title: const Text('Sunday school'),
                                 value: Service.SECOND,
                                 groupValue: _serviceValue,
-                                onChanged: (Service value) {
-                                  setState(() {
+                                onChanged: (Service value) async {
+                                  var connectivityResult = await (Connectivity().checkConnectivity());
+                                  if (connectivityResult == ConnectivityResult.mobile) {
+                                    // I am connected to a mobile network.
+                                    pr.show();
+                                    await getSeats(value._service);
+                                    pr.hide();
+                                  } else if (connectivityResult == ConnectivityResult.wifi) {
+                                    // I am connected to a wifi network.
+                                    pr.show();
+                                    await getSeats(value._service);
+                                    pr.hide();
+                                  }else if (connectivityResult == ConnectivityResult.none) {
+                                    // I am connected to a wifi network.
+                                    showToast("No Connection");
+                                  }
+                                  setState(()  {
                                     _serviceValue = value;
                                     Service data = value;
                                     service = data._service;
@@ -362,8 +389,23 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
                                 title: const Text('2nd Service'),
                                 value: Service.THIRD,
                                 groupValue: _serviceValue,
-                                onChanged: (Service value) {
-                                  setState(() {
+                                onChanged: (Service value) async {
+                                  var connectivityResult = await (Connectivity().checkConnectivity());
+                                  if (connectivityResult == ConnectivityResult.mobile) {
+                                    // I am connected to a mobile network.
+                                    pr.show();
+                                    await getSeats(value._service);
+                                    pr.hide();
+                                  } else if (connectivityResult == ConnectivityResult.wifi) {
+                                    // I am connected to a wifi network.
+                                    pr.show();
+                                    await getSeats(value._service);
+                                    pr.hide();
+                                  }else if (connectivityResult == ConnectivityResult.none) {
+                                    // I am connected to a wifi network.
+                                    showToast("No Connection");
+                                  }
+                                  setState(()  {
                                     _serviceValue = value;
                                     Service data = value;
                                     service = data._service;
@@ -371,12 +413,28 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
                                 },
                               ),
                               RadioListTile(
-                                title: const Text('Teen\'s service',
+                                title: const Text(
+                                  'Teen\'s service',
                                 ),
                                 value: Service.FOURTH,
                                 groupValue: _serviceValue,
-                                onChanged: (Service value) {
-                                  setState(() {
+                                onChanged: (Service value) async {
+                                  var connectivityResult = await (Connectivity().checkConnectivity());
+                                  if (connectivityResult == ConnectivityResult.mobile) {
+                                    // I am connected to a mobile network.
+                                    pr.show();
+                                    await getSeats(value._service);
+                                    pr.hide();
+                                  } else if (connectivityResult == ConnectivityResult.wifi) {
+                                    // I am connected to a wifi network.
+                                    pr.show();
+                                    await getSeats(value._service);
+                                    pr.hide();
+                                  }else if (connectivityResult == ConnectivityResult.none) {
+                                    // I am connected to a wifi network.
+                                    showToast("No Connection");
+                                  }
+                                  setState(()  {
                                     _serviceValue = value;
                                     Service data = value;
                                     service = data._service;
@@ -391,20 +449,20 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
                   ),
                   Container(
                     child: Card(
-
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: InkWell(
-                          child: Column(
+                          child:isDataReady ? Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
                               Padding(
                                 padding:
-                                    const EdgeInsets.fromLTRB(10, 10, 10, 5),
+                                const EdgeInsets.fromLTRB(10, 10, 10, 5),
                                 child: Text(
                                   "Select Seat Number(s)",
                                   style: TextStyle(
-                                      color: Color(0xff616161), fontSize: 16.0),
+                                      color: Color(0xff616161),
+                                      fontSize: 16.0),
                                 ),
                               ),
                               SizedBox(
@@ -412,87 +470,60 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
                               ),
                               Padding(
                                 padding: const EdgeInsets.all(8.0),
-                                child: new MultiSelect(
+                                child:new MultiSelect(
                                   autovalidate: true,
                                   initialValue: [' ', ' '],
                                   titleText: '',
-                                  maxLength: 5, // optional
+                                  maxLength: 5,
+                                  // optional
                                   validator: (dynamic value) {
                                     if (value == null) {
                                       return 'Please select one or more seat(s)';
                                     }
                                     return null;
                                   },
-                                  errorText: 'Please select one or more seat(s)',
-                                  dataSource: seatDropDown,
-                                  textField: 'seat_number',
-                                  valueField: 'ID',
+                                  errorText:
+                                  'Please select one or more seat(s)',
+                                  dataSource: _dataSource,
+                                  textField: 'name',
+                                  valueField: 'number',
                                   filterable: true,
                                   required: true,
                                   onSaved: (value) {
                                     print('The value is $value');
-
                                   },
 
                                   change: (value) async {
-
                                     selectedValues = value;
 //                                    selectedValues.forEach((item){
 //                                      concatenate.write(item);
 //                                    });
-
-
-                                    // Internet Present Case
-                                    if(service==null){
+                                    if (service == null) {
                                       showToast("Select service");
                                       setState(() {
-                                        isButtonEnabled=true;
+                                        isButtonEnabled = true;
                                       });
-                                    }else{
-                                      var len=selectedValues.length;
-                                      _seat.text=len.toString();
-
-
-                                      for (var i = 0; i < len; i++) {
-                                        String json=jsonEncode(selectedValues[i]);
-                                        var data = {
-
-                                          "service_name":"$service",
-                                          "seats": "$json",
-                                        };
-                                        showToast("Selecting..");
-                                        // Starting Web API Call.
-                                        var response = await http.post(Constant.checkSeat, body: data);
-                                        // Getting Server response into variable.
-                                        final rData = jsonDecode(response.body);
-                                        Response r=  Response.fromResponse(rData);
-                                        if(r.error==true){
-                                          setState(() {
-                                            isButtonEnabled=true;
-                                            showToast(r.message);
-                                          });
-                                        }else{
-                                          setState(() {
-                                            isButtonEnabled=false;
-                                          });
-                                        }
-                                      }
+                                    } else {
+                                      var len = selectedValues.length;
+                                      _seat.text = len.toString();
+                                      print(_seat.text);
+                                      setState(() {
+                                        isButtonEnabled = false;
+                                      });
                                     }
-
-
-
-
-
                                   },
 
                                   selectIcon: Icons.arrow_drop_down_circle,
-                                  saveButtonColor: Theme.of(context).primaryColor,
-                                  checkBoxColor: Theme.of(context).primaryColorDark,
-                                  cancelButtonColor: Theme.of(context).primaryColorLight,
+                                  saveButtonColor:
+                                  Theme.of(context).primaryColor,
+                                  checkBoxColor:
+                                  Theme.of(context).primaryColorDark,
+                                  cancelButtonColor:
+                                  Theme.of(context).primaryColorLight,
                                 ),
                               ),
                             ],
-                          ),
+                          ):Center(child: Text("DCU CHURCH UTAWALA")),
                         ),
                       ),
                     ),
@@ -505,18 +536,36 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
                     child: Container(
                       width: 0.5,
                       child: Padding(
-                        padding: const EdgeInsets.only(left: 60,top: 0, right: 60, bottom: 0),
+                        padding: const EdgeInsets.only(
+                            left: 60, top: 0, right: 60, bottom: 0),
                         child: RaisedButton(
                           elevation: 1,
-                          onPressed: isButtonEnabled ? null: () {
-                            setState(() {
+                          onPressed: isButtonEnabled
+                              ? null
+                              : () {
+                            setState(() async {
                               if (_seat.text.isEmpty) {
                                 _validate = true;
                                 showToast("Select number of seats");
                               } else if (_seat.text.isNotEmpty) {
-                                pr.show();
-                                _validate = false;
-                                _submit();
+
+
+
+                                var connectivityResult = await (Connectivity().checkConnectivity());
+                                if (connectivityResult == ConnectivityResult.mobile) {
+                                  // I am connected to a mobile network.
+                                  pr.show();
+                                  _validate = false;
+                                  _submit();
+                                } else if (connectivityResult == ConnectivityResult.wifi) {
+                                  // I am connected to a wifi network.
+                                  pr.show();
+                                  _validate = false;
+                                  _submit();
+                                }else if (connectivityResult == ConnectivityResult.none){
+                                  showToast("No Connection");
+                                }
+
 
 
                               }
@@ -557,7 +606,7 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
         pr.hide();
         String message = response.message;
         showToast("$message");
-         Navigator.pushNamed(context, 'BookedSuccess');
+        Navigator.pushNamed(context, 'BookedSuccess');
       } else if (response.error == true) {
         pr.hide();
         String message = response.message;
@@ -568,6 +617,4 @@ class BookASeatState extends State<BookASeat> implements HttpCallBack {
       showToast("failed");
     }
   }
-
-
 }

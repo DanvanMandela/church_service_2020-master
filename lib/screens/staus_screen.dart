@@ -1,6 +1,7 @@
 import 'package:churchapp/http/connectivity.dart';
 import 'package:churchapp/http/contant/constant.dart';
 import 'package:churchapp/screens/route_controller.dart';
+import 'package:connectivity/connectivity.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -44,6 +45,10 @@ class _BookingStatusState extends State<BookingStatus> {
     // Starting Web API Call.
     var response = await http.post(Constant.fetchBookUrl, body: data);
     final jsonResponse = jsonDecode(response.body);
+
+
+
+
     return BookModel.fromJson(jsonResponse);
   }
 
@@ -226,13 +231,28 @@ class _BookingStatusState extends State<BookingStatus> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18.0),
                   side: BorderSide(color: primaryColor)),
-              onPressed: () {
+              onPressed: () async{
 
-                setState(() {
-                  checkConn();
-                  booked = getBooked();
-                  showToast("Refreshing..");
-                });
+                var connectivityResult = await (Connectivity().checkConnectivity());
+                if (connectivityResult == ConnectivityResult.mobile) {
+                  setState(() {
+                    booked = getBooked();
+                    showToast("Refreshing..");
+                  });
+
+                  // I am connected to a mobile network.
+                } else if (connectivityResult == ConnectivityResult.wifi) {
+                  setState(() {
+                    booked = getBooked();
+                    showToast("Refreshing..");
+                  });
+
+                  // I am connected to a wifi network.
+                }else if (connectivityResult == ConnectivityResult.none) {
+                  // I am connected to a wifi network.
+                  showToast("No Connection");
+                }
+
               },
               color: primaryColor,
               textColor: Colors.white,

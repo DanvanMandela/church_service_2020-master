@@ -26,4 +26,8 @@ class Constant {
   //booked url
   static final checkSeat =
       'https://app.dcutawala.org/index.php/book/seat/isbooked';
+
+  //All seat url
+  static final allSeat =
+      'https://app.dcutawala.org/index.php/book/seat/all';
 }
